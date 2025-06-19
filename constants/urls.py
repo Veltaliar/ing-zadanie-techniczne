@@ -1,0 +1,1 @@
+ING_HOME_PAGE = "https://www.ing.pl"

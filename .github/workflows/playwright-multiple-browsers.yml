@@ -1,0 +1,39 @@
+name: Playwright Tests on Multiple Browsers
+
+on: [push, pull_request]
+
+jobs:
+    tests:
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix: 
+                browser: [chromium, firefox, webkit]
+                test_path: [tests]
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Build Docker Image
+              run: docker build -t playwright-python .
+
+            - name: Run Tests
+              run: |
+                docker run --rm \
+                  -v ${{ github.workspace }}/test_results:/app/test_results \
+                  -v ${{ github.workspace }}/traces:/app/traces \
+                  playwright-python \
+                  pytest ${{ matrix.test_path }} --html=test_results/${{ matrix.browser }}_report.html --browser ${{ matrix.browser }} --output=traces/${{ matrix.browser }} --tracing=retain-on-failure
+
+            - name: Upload HTML Test Report
+              uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                name: ${{ matrix.browser }}_report.html
+                path: test_results/${{ matrix.browser }}_report.html
+
+            - name: Upload Playwright Traces
+              if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                name: ${{ matrix.browser }}_playwright_traces
+                path: traces/${{ matrix.browser }}/
